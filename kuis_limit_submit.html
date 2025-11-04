@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Kuis Limit Fungsi SMA</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  body {font-family:"Segoe UI",sans-serif;background:#f9fafb;margin:0;padding:20px;color:#111;}
+  .container{max-width:900px;margin:auto;}
+  h1{text-align:center;color:#1d4ed8;}
+  .card{background:#fff;padding:20px;border-radius:14px;box-shadow:0 3px 8px rgba(0,0,0,0.08);margin-bottom:20px;}
+  label{font-weight:600;}
+  input[type=text]{padding:6px 10px;border:1px solid #ccc;border-radius:6px;}
+  button{background:#1d4ed8;color:white;padding:10px 18px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;}
+  button:hover{background:#2563eb;}
+  .secondary{background:#6b7280;}
+  .correct{background:#ecfdf5;border-left:5px solid #10b981;}
+  .wrong{background:#fef2f2;border-left:5px solid #ef4444;}
+  .feedback{font-weight:bold;margin-left:10px;}
+  #timer{text-align:center;font-size:18px;font-weight:bold;color:#b91c1c;margin-bottom:10px;}
+  .score-box{text-align:center;font-size:18px;font-weight:bold;margin-top:10px;color:#1e3a8a;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Kuis Limit Fungsi</h1>
+  <div id="timer">Waktu: 90:00</div>
+  <div id="student-info" class="card">
+    <label>Nama:</label><br><input type="text" id="nama"><br><br>
+    <label>Kelas:</label><br><input type="text" id="kelas"><br><br>
+    <button onclick="startQuiz()">Mulai Kuis</button>
+  </div>
+
+  <div id="quiz-area" style="display:none;">
+    <div id="quiz"></div>
+    <div style="text-align:center;">
+      <button id="submitBtn" onclick="gradeQuiz()">✅ Submit & Kirim</button>
+    </div>
+    <div id="score" class="score-box"></div>
+  </div>
+</div>
+
+<script>
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZhVRMSSjjU5etbV5h5Lrumx5yPqvt6wE0E2tVjRz9IR2leLdqTp8iNYFFOLIuhq3L7g/exec";  // Ganti dengan URL Web App kamu
+const questions = [
+  {q:'\\(\\lim_{x\\to 2}\\frac{x^2-4}{x-2}\\)',a:4},
+  {q:'\\(\\lim_{x\\to 3}\\frac{x^2-9}{x-3}\\)',a:6},
+  {q:'\\(\\lim_{x\\to 1}\\frac{x^2+x-2}{x-1}\\)',a:3},
+  {q:'\\(\\lim_{x\\to 0}\\frac{\\sin x}{x}\\)',a:1},
+  {q:'\\(\\lim_{x\\to 0}\\frac{1-\\cos x}{x^2}\\)',a:0.5},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{3x^2+5x}{6x^2-x}\\)',a:0.5},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{2x+1}{x+3}\\)',a:2},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{x^3+2x}{4x^3-5}\\)',a:0.25},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{5x-1}{2x+7}\\)',a:2.5},
+  {q:'\\(\\lim_{x\\to 0}\\frac{\\tan 3x}{x}\\)',a:3},
+  {q:'\\(\\lim_{x\\to 0}\\frac{e^x-1}{x}\\)',a:1},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{2x^3-x}{x^3+5x}\\)',a:2},
+  {q:'\\(\\lim_{x\\to -2}\\frac{x^2-4}{x+2}\\)',a:-4},
+  {q:'\\(\\lim_{x\\to 1}\\frac{x^3-1}{x-1}\\)',a:3},
+  {q:'\\(\\lim_{x\\to 2}\\frac{x^3-8}{x-2}\\)',a:12},
+  {q:'\\(\\lim_{x\\to 0}\\frac{\\sin 2x}{x}\\)',a:2},
+  {q:'\\(\\lim_{x\\to 0}\\frac{\\tan x}{\\sin x}\\)',a:1},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{4x^4+3x}{2x^4+x}\\)',a:2},
+  {q:'\\(\\lim_{x\\to \\infty}\\frac{7x^5+2}{14x^5-3x}\\)',a:0.5},
+  {q:'\\(\\lim_{x\\to \\pi/2}\\frac{1-\\sin x}{\\cos^2 x}\\)',a:0.5}
+];
+
+let remaining = 90*60;
+let timerInt;
+let locked = false;
+
+function startQuiz(){
+  const nama = document.getElementById("nama").value.trim();
+  const kelas = document.getElementById("kelas").value.trim();
+  if(!nama || !kelas){ alert("Isi nama dan kelas dulu."); return; }
+  document.getElementById("student-info").style.display="none";
+  document.getElementById("quiz-area").style.display="block";
+  renderQuiz();
+  startTimer();
+}
+
+function renderQuiz(){
+  const qz = document.getElementById("quiz");
+  qz.innerHTML="";
+  questions.forEach((item,i)=>{
+    qz.innerHTML += `<div class='card' id='q${i}'><b>Soal ${i+1}:</b><br>${item.q}<br><input type='text' id='a${i}' placeholder='Jawaban'><span class='feedback' id='f${i}'></span></div>`;
+  });
+  if(window.MathJax) MathJax.typesetPromise();
+}
+
+function parseAnswer(ans){
+  ans = ans.replace(",",".").trim();
+  if(ans.includes("/")){
+    const [n,d] = ans.split("/").map(Number);
+    if(!isNaN(n)&&!isNaN(d)&&d!==0) return n/d;
+  }
+  const val = parseFloat(ans);
+  return isNaN(val)?null:val;
+}
+
+function gradeQuiz(){
+  if(locked) return;
+  locked = true;
+  clearInterval(timerInt);
+  let correct = 0;
+  questions.forEach((item,i)=>{
+    const v = parseAnswer(document.getElementById('a'+i).value);
+    const box = document.getElementById('q'+i);
+    const fb = document.getElementById('f'+i);
+    if(v!==null && Math.abs(v-item.a)<1e-6){
+      correct++; box.classList.add('correct'); fb.textContent='✔️';
+    }else{ box.classList.add('wrong'); fb.textContent='❌'; }
+  });
+  const percent = (correct/questions.length*100).toFixed(1);
+  const timeUsed = formatTime(90*60 - remaining);
+  document.getElementById('score').textContent=`Skor: ${correct}/${questions.length} (${percent}%)`;
+  sendToSheet(correct,percent,timeUsed);
+}
+
+function startTimer(){
+  const timer=document.getElementById("timer");
+  timerInt=setInterval(()=>{
+    const m=Math.floor(remaining/60), s=remaining%60;
+    timer.textContent=`Waktu: ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    if(remaining<=0){clearInterval(timerInt); gradeQuiz();}
+    remaining--;
+  },1000);
+}
+
+function formatTime(sec){
+  const m=Math.floor(sec/60), s=sec%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function sendToSheet(score,percent,timeUsed){
+  const nama=document.getElementById("nama").value.trim();
+  const kelas=document.getElementById("kelas").value.trim();
+  const payload={nama,kelas,score,percent,timeUsed};
+  fetch(WEB_APP_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  }).then(()=>{
+    alert("✅ Jawaban dan nilai Anda telah dikirim ke guru!");
+  }).catch(err=>{
+    console.error(err);
+    alert("⚠️ Gagal mengirim data. Periksa koneksi internet.");
+  });
+}
+</script>
+</body>
+</html>
